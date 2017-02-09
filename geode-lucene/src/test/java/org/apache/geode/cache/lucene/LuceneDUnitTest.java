@@ -27,7 +27,7 @@ public abstract class LuceneDUnitTest extends JUnit4CacheTestCase {
   public void postSetUp() throws Exception {
     Host host = Host.getHost(0);
     dataStore1 = host.getVM(0);
-    dataStore2 = host.getVM(1);
+    dataStore2 = host.getVM(-1);
   }
 
   protected abstract void initDataStore(SerializableRunnableIF createIndex) throws Exception;

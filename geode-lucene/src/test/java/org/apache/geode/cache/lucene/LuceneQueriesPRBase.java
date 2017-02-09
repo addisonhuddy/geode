@@ -23,6 +23,13 @@ import static org.mockito.Matchers.any;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
+import org.apache.geode.distributed.internal.DistributionManager;
+import org.apache.geode.distributed.internal.DistributionMessage;
+import org.apache.geode.distributed.internal.DistributionMessageObserver;
+import org.apache.geode.internal.cache.InitialImageOperation;
+import org.apache.geode.internal.cache.InitialImageOperation.GIITestHook;
+import org.apache.geode.internal.cache.InitialImageOperation.GIITestHookType;
+import org.apache.geode.internal.cache.InitialImageOperation.RequestImageMessage;
 import org.junit.After;
 import org.junit.Test;
 
@@ -60,6 +67,45 @@ public abstract class LuceneQueriesPRBase extends LuceneQueriesBase {
     addCallbackToTriggerRebalance(dataStore1);
 
     putEntriesAndValidateQueryResults();
+  }
+
+  @Test
+  public void returnCorrectResultsWhenIndexUpdateHappensIntheMiddleofGII()
+      throws InterruptedException {
+    SerializableRunnableIF createIndex = () -> {
+      LuceneService luceneService = LuceneServiceProvider.get(getCache());
+      luceneService.createIndex(INDEX_NAME, REGION_NAME, "text");
+    };
+    dataStore1.invoke(() -> initDataStore(createIndex));
+    accessor.invoke(() -> initAccessor(createIndex));
+    dataStore1.invoke(() -> LuceneTestUtilities.pauseSender(getCache()));
+    putEntryInEachBucket();
+
+    dataStore2.invoke(() -> {
+      InitialImageOperation.setGIITestHook(
+          new GIITestHook(GIITestHookType.AfterSentRequestImage, "Do puts during request") {
+            @Override
+            public void reset() {
+
+          }
+
+            @Override
+            public String getRegionName() {
+              return "_B__index#__region.files_0";
+            }
+
+            @Override
+            public void run() {
+              dataStore1.invoke(() -> LuceneTestUtilities.resumeSender(getCache()));
+              waitForFlushBeforeExecuteTextSearch(dataStore1, 30000);
+            }
+          });
+    });
+
+    dataStore2.invoke(() -> initDataStore(createIndex));
+
+    assertTrue(waitForFlushBeforeExecuteTextSearch(dataStore1, 30000));
+    executeTextSearch(accessor, "world", "text", NUM_BUCKETS);
   }
 
   @Test
