@@ -15,8 +15,10 @@
 package org.apache.geode.cache.lucene.internal;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.apache.geode.cache.lucene.internal.directory.RegionDirectory;
+import org.apache.geode.cache.lucene.internal.partition.BucketTargetingMap;
 import org.apache.geode.cache.lucene.internal.repository.IndexRepository;
 import org.apache.geode.cache.lucene.internal.repository.IndexRepositoryImpl;
 import org.apache.geode.cache.lucene.internal.repository.serializer.LuceneSerializer;
@@ -41,8 +43,11 @@ public class IndexRepositoryFactory {
       LuceneIndexImpl index, PartitionedRegion userRegion, final IndexRepository oldRepository)
       throws IOException {
     LuceneIndexForPartitionedRegion indexForPR = (LuceneIndexForPartitionedRegion) index;
-    BucketRegion fileBucket = getMatchingBucket(indexForPR.getFileRegion(), bucketId);
-    BucketRegion chunkBucket = getMatchingBucket(indexForPR.getChunkRegion(), bucketId);
+    final PartitionedRegion fileRegion = indexForPR.getFileRegion();
+    final PartitionedRegion chunkRegion = indexForPR.getChunkRegion();
+
+    BucketRegion fileBucket = getMatchingBucket(fileRegion, bucketId);
+    BucketRegion chunkBucket = getMatchingBucket(chunkRegion, bucketId);
     BucketRegion dataBucket = getMatchingBucket(userRegion, bucketId);
     boolean success = false;
     if (fileBucket == null || chunkBucket == null) {
@@ -52,7 +57,7 @@ public class IndexRepositoryFactory {
       return null;
     }
     if (!fileBucket.getBucketAdvisor().isPrimary()) {
-      if (oldRepository != null) {
+      if (oldRepository != null && !oldRepository.isClosed()) {
         oldRepository.cleanup();
       }
       return null;
@@ -75,8 +80,8 @@ public class IndexRepositoryFactory {
 
     final IndexRepository repo;
     try {
-      RegionDirectory dir =
-          new RegionDirectory(fileBucket, chunkBucket, indexForPR.getFileSystemStats());
+      RegionDirectory dir = new RegionDirectory(getBucketTargetingMap(fileRegion, bucketId),
+          getBucketTargetingMap(chunkRegion, bucketId), indexForPR.getFileSystemStats());
       IndexWriterConfig config = new IndexWriterConfig(indexForPR.getAnalyzer());
       IndexWriter writer = new IndexWriter(dir, config);
       repo = new IndexRepositoryImpl(fileBucket, writer, serializer, indexForPR.getIndexStats(),
@@ -93,6 +98,10 @@ public class IndexRepositoryFactory {
       }
     }
 
+  }
+
+  private Map getBucketTargetingMap(PartitionedRegion region, int bucketId) {
+    return new BucketTargetingMap(region, bucketId);
   }
 
   private String getLockName(final Integer bucketId, final BucketRegion fileBucket) {

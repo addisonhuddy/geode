@@ -28,6 +28,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.geode.cache.lucene.internal.partition.BucketTargetingMap;
 import org.apache.geode.distributed.DistributedLockService;
 import org.apache.geode.distributed.internal.locks.DLockService;
 import org.apache.geode.internal.cache.BucketAdvisor;
@@ -102,8 +103,11 @@ public class PartitionedRepositoryManagerJUnitTest {
     fileRegion = Mockito.mock(PartitionedRegion.class);
     fileDataStore = Mockito.mock(PartitionedRegionDataStore.class);
     when(fileRegion.getDataStore()).thenReturn(fileDataStore);
+    when(fileRegion.getTotalNumberOfBuckets()).thenReturn(113);
+    when(fileRegion.getFullPath()).thenReturn("FileRegion");
     chunkRegion = Mockito.mock(PartitionedRegion.class);
     chunkDataStore = Mockito.mock(PartitionedRegionDataStore.class);
+    when(chunkRegion.getFullPath()).thenReturn("ChunkRegion");
     when(chunkRegion.getDataStore()).thenReturn(chunkDataStore);
     indexStats = Mockito.mock(LuceneIndexStats.class);
     fileSystemStats = Mockito.mock(FileSystemStats.class);
@@ -237,8 +241,10 @@ public class PartitionedRepositoryManagerJUnitTest {
   protected void checkRepository(IndexRepositoryImpl repo0, int bucketId) {
     IndexWriter writer0 = repo0.getWriter();
     RegionDirectory dir0 = (RegionDirectory) writer0.getDirectory();
-    assertEquals(fileBuckets.get(bucketId), dir0.getFileSystem().getFileRegion());
-    assertEquals(chunkBuckets.get(bucketId), dir0.getFileSystem().getChunkRegion());
+    assertEquals(new BucketTargetingMap(fileRegion, bucketId),
+        dir0.getFileSystem().getFileRegion());
+    assertEquals(new BucketTargetingMap(chunkRegion, bucketId),
+        dir0.getFileSystem().getChunkRegion());
     assertEquals(serializer, repo0.getSerializer());
   }
 

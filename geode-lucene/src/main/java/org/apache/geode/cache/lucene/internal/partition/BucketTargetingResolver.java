@@ -1,7 +1,7 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * copyright ownership. The ASF licenses this file to You under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance with the License. You may obtain a
  * copy of the License at
  *
@@ -12,23 +12,28 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.cache.lucene;
+package org.apache.geode.cache.lucene.internal.partition;
 
-import org.apache.geode.test.dunit.Host;
-import org.apache.geode.test.dunit.SerializableRunnableIF;
-import org.apache.geode.test.dunit.VM;
-import org.apache.geode.test.dunit.cache.internal.JUnit4CacheTestCase;
+import org.apache.geode.cache.EntryOperation;
+import org.apache.geode.cache.PartitionResolver;
 
-public abstract class LuceneDUnitTest extends JUnit4CacheTestCase {
-  protected VM dataStore1;
-  protected VM dataStore2;
-
+/**
+ * A partition resolver that expects all operations to be performed with a callback argument that
+ * indicates the actual bucket to target.
+ */
+public class BucketTargetingResolver implements PartitionResolver {
   @Override
-  public void postSetUp() throws Exception {
-    Host host = Host.getHost(0);
-    dataStore1 = host.getVM(0);
-    dataStore2 = host.getVM(1);
+  public Object getRoutingObject(final EntryOperation opDetails) {
+    return opDetails.getCallbackArgument();
   }
 
-  protected abstract void initDataStore(SerializableRunnableIF createIndex) throws Exception;
+  @Override
+  public String getName() {
+    return getClass().getName();
+  }
+
+  @Override
+  public void close() {
+
+  }
 }

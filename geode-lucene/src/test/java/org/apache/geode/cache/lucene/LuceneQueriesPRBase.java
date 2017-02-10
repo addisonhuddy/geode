@@ -70,45 +70,6 @@ public abstract class LuceneQueriesPRBase extends LuceneQueriesBase {
   }
 
   @Test
-  public void returnCorrectResultsWhenIndexUpdateHappensIntheMiddleofGII()
-      throws InterruptedException {
-    SerializableRunnableIF createIndex = () -> {
-      LuceneService luceneService = LuceneServiceProvider.get(getCache());
-      luceneService.createIndex(INDEX_NAME, REGION_NAME, "text");
-    };
-    dataStore1.invoke(() -> initDataStore(createIndex));
-    accessor.invoke(() -> initAccessor(createIndex));
-    dataStore1.invoke(() -> LuceneTestUtilities.pauseSender(getCache()));
-    putEntryInEachBucket();
-
-    dataStore2.invoke(() -> {
-      InitialImageOperation.setGIITestHook(
-          new GIITestHook(GIITestHookType.AfterSentRequestImage, "Do puts during request") {
-            @Override
-            public void reset() {
-
-          }
-
-            @Override
-            public String getRegionName() {
-              return "_B__index#__region.files_0";
-            }
-
-            @Override
-            public void run() {
-              dataStore1.invoke(() -> LuceneTestUtilities.resumeSender(getCache()));
-              waitForFlushBeforeExecuteTextSearch(dataStore1, 30000);
-            }
-          });
-    });
-
-    dataStore2.invoke(() -> initDataStore(createIndex));
-
-    assertTrue(waitForFlushBeforeExecuteTextSearch(dataStore1, 30000));
-    executeTextSearch(accessor, "world", "text", NUM_BUCKETS);
-  }
-
-  @Test
   public void returnCorrectResultsWhenMoveBucketHappensOnIndexUpdate() throws InterruptedException {
     final DistributedMember member2 =
         dataStore2.invoke(() -> getCache().getDistributedSystem().getDistributedMember());
@@ -232,7 +193,10 @@ public abstract class LuceneQueriesPRBase extends LuceneQueriesBase {
   }
 
   private void removeCallback(VM vm) {
-    vm.invoke(IndexRepositorySpy::remove);
+    vm.invoke(() -> {
+      IndexRepositorySpy.remove();
+      InitialImageOperation.resetAllGIITestHooks();
+    });
   }
 
   private void rebalanceRegion(VM vm) {
