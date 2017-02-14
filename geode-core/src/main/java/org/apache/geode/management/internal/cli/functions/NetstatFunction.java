@@ -14,6 +14,8 @@
  */
 package org.apache.geode.management.internal.cli.functions;
 
+import static org.apache.geode.internal.lang.SystemUtils.*;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,13 +46,6 @@ import org.apache.geode.management.internal.cli.i18n.CliStrings;
 public class NetstatFunction implements Function, InternalEntity {
   private static final Logger logger = LogService.getLogger();
   private static final long serialVersionUID = 1L;
-
-  private static final String OS_NAME_LINUX = "Linux";
-  private static final String OS_NAME_MACOS = "darwin";
-  private static final String OS_NAME_SOLARIS = "SunOS";
-  private static final String OS_NAME_PROP = "os.name";
-  private static final String OS_ARCH_PROP = "os.arch";
-  private static final String OS_VERSION_PROP = "os.version";
 
   public static final NetstatFunction INSTANCE = new NetstatFunction();
 
@@ -92,9 +87,7 @@ public class NetstatFunction implements Function, InternalEntity {
   private static void addMemberHostHeader(final StringBuilder netstatInfo, final String id,
       final String host, final String lineSeparator) {
 
-    // TODO:GEODE-2474: replace with SystemUtils
-    String osInfo = System.getProperty(OS_NAME_PROP) + " " + System.getProperty(OS_VERSION_PROP)
-        + " " + System.getProperty(OS_ARCH_PROP);
+    String osInfo = getOsName() + " " + getOsVersion() + " " + getOsArchitecture();
 
     StringBuilder memberPlatFormInfo = new StringBuilder();
     memberPlatFormInfo.append(CliStrings.format(CliStrings.NETSTAT__MSG__FOR_HOST_1_OS_2_MEMBER_0,
@@ -113,17 +106,15 @@ public class NetstatFunction implements Function, InternalEntity {
   }
 
   private static void addNetstatDefaultOptions(final List<String> cmdOptionsList) {
-    // TODO:GEODE-2474: replace with SystemUtils
-    String osName = System.getProperty(OS_NAME_PROP);
-    if (OS_NAME_LINUX.equalsIgnoreCase(osName)) {
+    if (isLinux()) {
       cmdOptionsList.add("-v");
       cmdOptionsList.add("-a");
       cmdOptionsList.add("-e");
-    } else if (OS_NAME_MACOS.equalsIgnoreCase(osName)) {
+    } else if (isMacOSX()) {
       cmdOptionsList.add("-v");
       cmdOptionsList.add("-a");
       cmdOptionsList.add("-e");
-    } else if (OS_NAME_SOLARIS.equalsIgnoreCase(osName)) {
+    } else if (isSolaris()) {
       cmdOptionsList.add("-v");
       cmdOptionsList.add("-a");
     } else { // default to Windows
@@ -169,10 +160,7 @@ public class NetstatFunction implements Function, InternalEntity {
     existingNetstatInfo.append("################ ").append(LSOF_COMMAND)
         .append(" output ###################").append(lineSeparator);
 
-    // TODO:GEODE-2474: replace with SystemUtils
-    String osName = System.getProperty(OS_NAME_PROP);
-    if (OS_NAME_LINUX.equalsIgnoreCase(osName) || OS_NAME_MACOS.equalsIgnoreCase(osName)
-        || OS_NAME_SOLARIS.equalsIgnoreCase(osName)) {
+    if (isLinux() || isMacOSX() || isSolaris()) {
 
       ProcessBuilder procBuilder = new ProcessBuilder(LSOF_COMMAND);
       try {
