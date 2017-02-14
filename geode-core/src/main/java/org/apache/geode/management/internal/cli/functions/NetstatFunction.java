@@ -110,14 +110,7 @@ public class NetstatFunction implements Function, InternalEntity {
       cmdOptionsList.add("-v");
       cmdOptionsList.add("-a");
       cmdOptionsList.add("-e");
-    } else if (isMacOSX()) {
-      cmdOptionsList.add("-v");
-      cmdOptionsList.add("-a");
-      cmdOptionsList.add("-e");
-    } else if (isSolaris()) {
-      cmdOptionsList.add("-v");
-      cmdOptionsList.add("-a");
-    } else { // default to Windows
+    } else {
       cmdOptionsList.add("-v");
       cmdOptionsList.add("-a");
     }
