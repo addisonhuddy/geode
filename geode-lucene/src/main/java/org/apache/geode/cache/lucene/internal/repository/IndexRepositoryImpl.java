@@ -167,7 +167,7 @@ public class IndexRepositoryImpl implements IndexRepository {
   }
 
   @Override
-  public void cleanup() {
+  public synchronized void cleanup() {
     try {
       stats.removeDocumentsSupplier(documentCountSupplier);
       try {
